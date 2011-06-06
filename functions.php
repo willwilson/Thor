@@ -44,7 +44,7 @@ function curl_request($opts){
 	} else {
 		$opts['url'] .= '?';
 		foreach ($opts['params'] as $k => $v){
-			$url .= $k.'='.$v.'&';
+			$opts['url'] .= $k.'='.$v.'&';
 		}
 		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $opts['type']);
 	}
