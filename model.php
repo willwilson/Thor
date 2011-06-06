@@ -49,7 +49,7 @@ class Model {
 		}
 	}
 
-	function _error($error, $text=''){
+	function _error($error='', $text=''){
 		$api =& get_instance();
 		$api->output->error($error, $text);
 	}
@@ -79,10 +79,10 @@ class Model {
 		$assoc = array();
 		$rowCount = mysql_num_fields($result);
 		for ($idx = 0; $idx < $rowCount; $idx++) {
-			$table = mysql_field_table($result, $idx);
+			$table = singular(mysql_field_table($result, $idx));
 			$field = mysql_field_name($result, $idx);
 			if (array_key_exists($field, $assoc)) {
-				$assoc[singular($this->table)."_$field"] = $row[$idx];
+				$assoc[$table."_$field"] = $row[$idx];
 			} else {
 				$assoc["$field"] = $row[$idx];
 			}
@@ -258,20 +258,26 @@ class Model {
 		if ($this->defaults['order'] != null){
 			$order = "ORDER BY {$this->defaults['order']}";
 		}
+		$join = "";
+		$join_sql = "";
 		if ($this->defaults['joins'] != ''){
-			$join_table = $this->defaults['joins'];
-			$join = " LEFT JOIN `{$this->defaults['joins']}` ON `{$this->_table}`.".singular($this->defaults['joins'])."_id = {$this->defaults['joins']}.id ";
+			if (is_array($this->defaults['joins'])){
+				foreach($this->defaults['joins'] as $joins){
+					$join_sql .= ", `$joins`.*";
+					$join .= " LEFT JOIN `$joins` ON `{$this->_table}`.".singular($joins)."_id = $joins.id ";
+				}
+			} else {
+				$join_sql = ", `{$this->defaults['joins']}`.*";
+				$join = " LEFT JOIN `{$this->defaults['joins']}` ON `{$this->_table}`.".singular($this->defaults['joins'])."_id = {$this->defaults['joins']}.id ";
+			}
 			$where_tmp = array();
 			foreach($where_ary as $k => $v){
 				$where_tmp[$this->_table.'`.`'.$k] = $v;
 			}
 			$where_ary = $where_tmp;
-			$this->_where_str($where_ary, "WHERE ");
-			return $this->_run_query("SELECT `{$this->_table}`.*, `$join_table`.* FROM `{$this->_table}` $join {$this->where_str} $order $limit", true);
-		} else {
-			$this->_where_str($where_ary,"WHERE ");
-			return $this->_run_query("SELECT * FROM `{$this->_table}` {$this->where_str} $order $limit", true);
 		}
+		$this->_where_str($where_ary, "WHERE ");
+		return $this->_run_query("SELECT `{$this->_table}`.* $join_sql FROM `{$this->_table}` $join {$this->where_str} $order $limit", true);
 	}
 
 	function _sql_update($where_ary){
